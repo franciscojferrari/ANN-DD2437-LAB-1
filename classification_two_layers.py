@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib as plt
-from utils import generate_linear_data, generate_nonlinear_data
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import accuracy_score
+from utils import generate_linear_data, generate_nonlinear_data, train_test_split, plot_losses
+from sklearn.metrics import mean_squared_error, accuracy_score
 
 
 class NueralNet:
@@ -125,21 +124,23 @@ def main():
     # data_non_linear = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     # inputs_non_linear, targets_non_linear = data_non_linear['inputs'], data_non_linear['targets']
     np.random.seed(42)
+
+    # Set hyperparameters.
     n = 110
     mA = [2.0, 0.5]
     sigmaA = 0.5
     mB = [-2.0, -1.5]
     sigmaB = 0.5
+
+    # Generate data.
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data['inputs'], data['targets']
-    # TODO: Proper dataset split like 3.1.2 (class valance, etc)
-    val_x = inputs[:, 200:]
-    val_y = targets[:, 200:]
-    inputs = inputs[:, 0:200]
-    targets = targets[:, 0:200]
 
-    aa = NueralNet(inputs, targets)
-    aa.train_network(100, val_x, val_y)
+    # TODO: Proper dataset split like 3.1.2 (class valance, etc)
+    x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split=0.33)
+    aa = NueralNet(x_train, y_train)
+    losses = aa.train_network(100, x_val, y_val)
+    plot_losses(losses)
 
 
 if __name__ == '__main__':

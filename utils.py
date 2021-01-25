@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from typing import Dict
 
 
 def generate_linear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: float, target_values = [-1, 1]):
@@ -44,3 +46,27 @@ def generate_nonlinear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: f
     inputs = inputs[indices]
     targets = targets[indices]
     return {"inputs": inputs.T, "targets": targets}
+
+
+def train_test_split(x: np.array, y: np.array, split: float):
+    split = int((1-split)*x.shape[1])
+    x_train, x_val = x[:, :split], x[:, split:]
+    y_train, y_val = y[:, :split], y[:, split:]
+
+    return x_train, x_val, y_train, y_val
+
+
+def plot_losses(losses: Dict) -> None:
+    plt.plot(losses["val_losses"], label="Validation loss")
+    plt.plot(losses["epoch_losses"], label="Train loss")
+    plt.xlabel("Epochs")
+    plt.ylabel("Mean Squared Error loss")
+    plt.legend()
+    plt.show()
+
+    plt.plot(losses["val_accuracies"], label="Validation accuracy")
+    plt.plot(losses["epoch_accuracies"], label="Train accuracy")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
