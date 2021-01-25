@@ -16,12 +16,13 @@ class NueralNet:
         self.dims = [self.X.shape[0], 5, 1]
         self.param = {}
         self.ch = {}
-        self.batch_size = 7
 
         self.loss = []
         self.lr = 0.001
         self.momentum = 0.9
         self.samples = self.Y.shape[1]
+
+        self.batch_size = self.samples
         self.initWeights()
 
     @staticmethod
@@ -99,14 +100,16 @@ class NueralNet:
             epoch_losses.append(forward['loss'])
             predictions = NueralNet.step_function(forward['Yp'])
             epoch_accuracies.append(accuracy_score(self.Y[0], predictions[0]))
-            if x_val and y_val is not None:
-                self.predict(x_val, y_val)
+            if type(x_val) and type(y_val) is np.ndarray:
+                val_results = self.predict(x_val, y_val)
+                val_accuracies.append(val_results['acc'])
+                val_losses.append(val_results['loss'])
 
         return {"batch_losses": batch_losses, "batch_accuracies": batch_accuracies, "epoch_losses": epoch_losses,
-                "epoch_accuracies": epoch_accuracies}
+                "epoch_accuracies": epoch_accuracies, "val_accuracies": val_accuracies, "val_losses": val_losses}
 
     def predict(self, X, y):
-        forward = self.fowardPass(X)
+        forward = self.fowardPass(X, y)
         predictions = NueralNet.step_function(forward['Yp'])
         accuracy = accuracy_score(y[0], predictions[0])
         return {"pred": predictions, "acc": accuracy, "loss": forward['loss']}
@@ -122,16 +125,21 @@ def main():
     # data_non_linear = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     # inputs_non_linear, targets_non_linear = data_non_linear['inputs'], data_non_linear['targets']
     np.random.seed(42)
-    n = 100
+    n = 110
     mA = [2.0, 0.5]
     sigmaA = 0.5
     mB = [-2.0, -1.5]
     sigmaB = 0.5
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data['inputs'], data['targets']
+    # TODO: Proper dataset split like 3.1.2 (class valance, etc)
+    val_x = inputs[:, 200:]
+    val_y = targets[:, 200:]
+    inputs = inputs[:, 0:200]
+    targets = targets[:, 0:200]
 
     aa = NueralNet(inputs, targets)
-    aa.train_network(100)
+    aa.train_network(100, val_x, val_y)
 
 
 if __name__ == '__main__':

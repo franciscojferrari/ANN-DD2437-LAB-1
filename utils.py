@@ -19,7 +19,7 @@ def generate_linear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: floa
     inputs = inputs[indices]
     targets = targets[indices]
 
-    return {"inputs": inputs.T, "targets": targets}
+    return {"inputs": inputs.T, "targets": np.atleast_2d(targets)}
 
 
 def generate_nonlinear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: float, target_values = [-1, 1]):
