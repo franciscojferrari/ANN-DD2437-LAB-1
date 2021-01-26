@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import generate_linear_data, generate_nonlinear_data, train_test_split, plot_losses
+from utils import generate_linear_data, generate_nonlinear_data, train_test_split, plot_losses, plot_decision_boundary
 from sklearn.metrics import mean_squared_error, accuracy_score
 
 
@@ -21,7 +21,8 @@ class NueralNet:
         self.momentum = 0.9
         self.samples = self.Y.shape[1]
 
-        self.batch_size = self.samples
+        self.sequential = False  # Using batch or sequential learning.
+        self.batch_size = 1 if self.sequential else self.samples
         self.initWeights()
 
     @staticmethod
@@ -37,6 +38,14 @@ class NueralNet:
         x = np.copy(X)
         x[x >= 0] = 1
         x[x < 0] = -1
+        return x
+
+    @staticmethod
+    def step_function_pred(X):
+        """Added for plotting purposes."""
+        x = np.copy(X)
+        x[x >= 0] = 1
+        x[x < 0] = 0
         return x
 
     def initWeights(self):
@@ -129,6 +138,26 @@ class NueralNet:
 
         return {"pred": predictions, "acc": accuracy, "loss": forward['loss']}
 
+    def forward_pred(self, x):
+        """Added for plotting."""
+        hin = self.W @ x
+        hout = self.sigmoid(hin)
+        hout = np.append(hout.T, np.ones((hout.shape[1], 1)), axis=1).T
+        self.ch["hin"], self.ch["hout"] = hin, hout
+
+        oin = self.V @ hout
+        out = NueralNet.sigmoid(oin)
+        self.ch["oin"], self.ch["out"] = oin, out
+
+        return out
+
+    def pred(self, x):
+        """Added for plotting."""
+        forward = self.forward_pred(x)
+        predictions = NueralNet.step_function_pred(forward)
+
+        return predictions
+
 
 def exe_3_2_1():
     """Experiment varying the number of hidden layers."""
@@ -191,6 +220,21 @@ def exe_3_2_1():
     # Experiment 4 - Check difference between sequential and batch learning.
 
     # Experiment 5 - Plot decision boundary.
+    hidden_layer_shape = 18
+    output_layer_size = 1
+    epochs = 500
+
+    data = generate_nonlinear_data(n, mA, mB, sigmaA, sigmaB, target_values=[1, -1])
+    inputs, targets = data["inputs"], data["targets"]
+    x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split=0.2)
+    model = NueralNet(
+        x_train,
+        y_train,
+        hidden_layer_size=hidden_layer_shape,
+        output_layer_size=output_layer_size,
+    )
+    model.train_network(epochs)
+    plot_decision_boundary(inputs, targets, model)
 
 
 def main():
