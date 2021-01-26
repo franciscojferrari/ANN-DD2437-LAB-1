@@ -14,35 +14,36 @@ import matplotlib.pyplot as plt
 
 
 class MackeyGlassSolver(object):
-    def __init__(self, beta=0.2, gamma=0.1, n_coef=10, tau=25, x_init=1.5, 
-                                                                     x_past=0):
+    def __init__(self, beta=0.2, gamma=0.1, n_coef=10, tau=25, x_init=1.5, x_past=0):
         self.beta = beta
         self.gamma = gamma
         self.tau = tau
         self.x_init = x_init
         self.x_past = x_past
         self.n_coef = n_coef
-    
+
     def solve_mackey_glass(self, t_init, t_end, dt):
-        n_steps = int(np.round((t_end-t_init) / dt))
-        time = np.linspace(t_init, t_end, n_steps+1)
-        x_evol = np.zeros(n_steps+1)
-        x_evol[0] = self.x_init # setting the initial condition
+        n_steps = int(np.round((t_end - t_init) / dt))
+        time = np.linspace(t_init, t_end, n_steps + 1)
+        x_evol = np.zeros(n_steps + 1)
+        x_evol[0] = self.x_init  # setting the initial condition
         for present_idx in range(n_steps):
             self.euler_step(x_evol, present_idx, dt)
         return time, x_evol
-            
+
     def euler_step(self, x_evol, present_idx, dt):
         x_t_tau = self.get_delayed_term(x_evol, present_idx, dt)
-        dxdt = self.beta*x_t_tau / (1+x_t_tau**self.n_coef) - self.gamma * \
-                                                            x_evol[present_idx]
-        x_evol[present_idx+1] = x_evol[present_idx] + dxdt*dt
+        dxdt = (
+            self.beta * x_t_tau / (1 + x_t_tau ** self.n_coef)
+            - self.gamma * x_evol[present_idx]
+        )
+        x_evol[present_idx + 1] = x_evol[present_idx] + dxdt * dt
         return
-    
+
     # gets the value of x at time instant t-tau
     def get_delayed_term(self, x_evol, present_idx, dt):
         delayed_idx = present_idx - int(np.round(self.tau / dt))
-        if delayed_idx < 0: 
+        if delayed_idx < 0:
             x_t_tau = self.x_past
         else:
             x_t_tau = x_evol[delayed_idx]
@@ -67,14 +68,4 @@ time, x_evol = solver.solve_mackey_glass(t_init, t_end, dt)
 save_signal(time, x_evol)
 
 plt.figure()
-plt.plot(time, x_evol) 
-
-
-
-
-
-
-
-
-
-
+plt.plot(time, x_evol)
