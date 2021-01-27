@@ -15,24 +15,41 @@ def main():
 
     losses = []
 
-    for layer_size in range(1, 25):
-        network = nn.NueralNet(x_train, y_train, hidden_layer_size = layer_size, output_layer_size = 1,
-                               is_binary = False)
-        nnTrainResults = network.train_network(epochs = 1000)
+    # for layer_size in range(1, 25):
+    #     network = nn.NueralNet(x_train, y_train, hidden_layer_size = layer_size, output_layer_size = 1,
+    #                            is_binary = False)
+    #     nnTrainResults = network.train_network(epochs = 1000)
+    #
+    #     results = network.fowardPass(inputs, targets, include_bias = True)
+    #     losses.append(results['loss'])
+    #
+    #     batch_out = np.reshape(results["Yp"], (data['size'], data['size']))
+    #     # plot_gaussian(data, batch_out, f"Gaussian Out - hidden_layer_size {layer_size}",
+    #     #               gif = {"epoch": 1000, "seq": 0})
+    #
+    # # Plot results.
+    # plt.plot(losses, label = "Losses")
+    # plt.xlabel("Number of hidden nodes.")
+    # plt.ylabel("Mean Squared Error loss")
+    # plt.show()
+    # print(losses)
 
-        results = network.fowardPass(inputs, targets, include_bias = True)
-        losses.append(results['loss'])
+    split_ratios = [0.2, 0.4, 0.6, 0.8]
+    hidden_layer_shape = 25
 
-        batch_out = np.reshape(results["Yp"], (data['size'], data['size']))
+    for split in split_ratios:
+        x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split)
+        network = nn.NueralNet(x_train, y_train, hidden_layer_size = hidden_layer_shape, output_layer_size = 1,
+                               is_binary = False, lr = 0.05)
+        losses = network.train_network(1000, inputs, targets)
 
-        plot_gaussian(data, batch_out, f"Gaussian Out - hidden_layer_size {layer_size}",
-                      gif = {"epoch": 1000, "seq": 0})
-
-    # Plot results.
-    plt.plot(losses, label = "Losses")
-    plt.xlabel("Number of hidden nodes.")
-    plt.ylabel("Mean Squared Error loss")
-    plt.show()
+        plt.plot(losses["val_losses"], label = "Validation loss")
+        plt.plot(losses["epoch_losses"], label = "Train loss")
+        plt.xlabel("Epochs")
+        plt.ylabel("Mean Squared Error loss")
+        plt.legend()
+        plt.title(f"Data split: {split}")
+        plt.show()
 
 
 # for epoch, batch in enumerate(nnTrainResults["batch_out"]):
