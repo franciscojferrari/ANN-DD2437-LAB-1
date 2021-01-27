@@ -6,7 +6,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score
 
 class NueralNet:
     def __init__(self, x, y, hidden_layer_size, output_layer_size, is_binary = True):
-        self.X = x
+        self.X = np.append(x.T, np.ones((x.shape[1], 1)), axis = 1).T
         self.Y = np.atleast_2d(y)
         self.Yp = np.zeros((1, self.Y.shape[1]))
 
@@ -62,10 +62,14 @@ class NueralNet:
                 (1 - ((self.Y + 1) / 2)) @ np.log(1 - Yp).T))
         return loss
 
-    def fowardPass(self, X = None, Y = None):
-        hin = self.W @ (self.X if X is None else X)
+    def fowardPass(self, X = None, Y = None, include_bias = False):
+        X = (self.X if X is None else X)
+        if include_bias:
+            X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+
+        hin = self.W @ X
         hout = NueralNet.sigmoid(hin)
-        hout = np.append(hout.T, np.ones((hout.shape[1], 1)), axis = 1).T
+        hout = np.append(hout.T, np.ones((hout.shape[1], 1)), axis = 1).T  # maybe here
         self.ch['hin'], self.ch['hout'] = hin, hout
 
         oin = self.V @ hout
@@ -73,11 +77,9 @@ class NueralNet:
         self.ch['oin'], self.ch['out'] = oin, out
 
         self.Yp = out
-        try:
-            loss = mean_squared_error(self.Y if Y is None else Y, out)
-        except:
-            print("error")
-        return {"Yp": self.Yp, "loss": loss}
+        loss = mean_squared_error(self.Y if Y is None else Y, out)
+
+        return {"Yp": out, "loss": loss}
 
     def backwardsPass(self, X = None, Y = None):
         delta_o = (self.Yp - (self.Y if Y is None else Y)) * NueralNet.sigmoid_prime(self.Yp)
@@ -88,20 +90,20 @@ class NueralNet:
             self.dw = delta_h @ (self.X if X is None else X).T
             self.dv = delta_o @ self.ch['hout'].T
         else:
-            self.dw = (self.momentum * self.dw) - (
-                    (1 - self.momentum) * (delta_h @ (self.X if X is None else X).T))
-            self.dv = (self.momentum * self.dv) - (
-                    (1 - self.momentum) * (delta_o @ self.ch['hout'].T))
+            self.dw = (self.momentum * self.dw) - ((1 - self.momentum) * (delta_h @ (self.X if X is None else X).T))
+            self.dv = (self.momentum * self.dv) - ((1 - self.momentum) * (delta_o @ self.ch['hout'].T))
 
         self.W = self.W + (self.lr * self.dw)
         self.V = self.V + (self.lr * self.dv)
 
     def train_network(self, epochs, x_val = None, y_val = None):
-        batch_losses, batch_accuracies, epoch_losses, epoch_accuracies, val_losses, val_accuracies = [], [], [], [], [], []
+        batch_losses, batch_accuracies, batch_out, epoch_losses, epoch_accuracies, val_losses, val_accuracies = [], [], [], [], [], [], []
         Xbatches = np.array_split(self.X, self.samples // self.batch_size, axis = 1)
         Ybatches = np.array_split(self.Y, self.samples // self.batch_size, axis = 1)
 
         for epoch in range(epochs):
+            if epoch == epochs - 1:
+                print("Here")
             for Xbatch, Ybatch in list(zip(Xbatches, Ybatches)):
                 forward = self.fowardPass(Xbatch, Ybatch)
                 self.backwardsPass(Xbatch, Ybatch)
@@ -114,9 +116,12 @@ class NueralNet:
             forward = self.fowardPass()
             epoch_losses.append(forward['loss'])
 
+            predictions = forward['Yp']
             if self.is_binary:
-                predictions = NueralNet.step_function(forward['Yp'])
+                predictions = NueralNet.step_function(predictions)
                 epoch_accuracies.append(accuracy_score(self.Y[0], predictions[0]))
+
+            batch_out.append(predictions)
 
             if type(x_val) and type(y_val) is np.ndarray:
                 val_results = self.predict(x_val, y_val)
@@ -124,12 +129,12 @@ class NueralNet:
                 val_losses.append(val_results['loss'])
 
         return {"batch_losses": batch_losses, "batch_accuracies": batch_accuracies,
-                "epoch_losses": epoch_losses,
-                "epoch_accuracies": epoch_accuracies, "val_accuracies": val_accuracies,
-                "val_losses": val_losses}
+                "epoch_losses": epoch_losses, "epoch_accuracies": epoch_accuracies,
+                "val_accuracies": val_accuracies, "val_losses": val_losses,
+                "batch_out": batch_out}
 
     def predict(self, X, y):
-        forward = self.fowardPass(X, y)
+        forward = self.fowardPass(X, y, include_bias = True)
         predictions = forward['Yp']
         accuracy = [0]
         if self.is_binary:
@@ -142,7 +147,7 @@ class NueralNet:
         """Added for plotting."""
         hin = self.W @ x
         hout = self.sigmoid(hin)
-        hout = np.append(hout.T, np.ones((hout.shape[1], 1)), axis=1).T
+        hout = np.append(hout.T, np.ones((hout.shape[1], 1)), axis = 1).T
         self.ch["hin"], self.ch["hout"] = hin, hout
 
         oin = self.V @ hout
@@ -224,14 +229,14 @@ def exe_3_2_1():
     output_layer_size = 1
     epochs = 500
 
-    data = generate_nonlinear_data(n, mA, mB, sigmaA, sigmaB, target_values=[1, -1])
+    data = generate_nonlinear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
-    x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split=0.2)
+    x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split = 0.2)
     model = NueralNet(
         x_train,
         y_train,
-        hidden_layer_size=hidden_layer_shape,
-        output_layer_size=output_layer_size,
+        hidden_layer_size = hidden_layer_shape,
+        output_layer_size = output_layer_size,
     )
     model.train_network(epochs)
     plot_decision_boundary(inputs, targets, model)
