@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from typing import Dict, List
+import glob
+import os
+import natsort
+import imageio
 
 
 def generate_linear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: float, target_values = [-1, 1]):
@@ -14,7 +19,7 @@ def generate_linear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: floa
     inputs = np.concatenate((classA, classB))
     targets = np.concatenate((target_values[0] * np.ones(classA.shape[0]), target_values[1] * np.ones(classB.shape[0])))
 
-    inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
+    # inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
 
     indices = np.arange(inputs.shape[0])
     np.random.shuffle(indices)
@@ -39,7 +44,7 @@ def generate_nonlinear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: f
     inputs = np.concatenate((classA, classB))
     targets = np.concatenate((target_values[0] * np.ones(classA.shape[0]), target_values[1] * np.ones(classB.shape[0])))
 
-    inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
+    # inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
 
     indices = np.arange(inputs.shape[0])
     np.random.shuffle(indices)
@@ -48,16 +53,41 @@ def generate_nonlinear_data(N: int, mA: list, mB: list, sigmaA: float, sigmaB: f
     return {"inputs": inputs.T, "targets": np.atleast_2d(targets)}
 
 
-def train_test_split(x: np.array, y: np.array, split: float, split_valance = None):
+def train_test_split(x: np.array, y: np.array, split: float):
+    split = int((1 - split) * x.shape[1])
+
+    indices = np.arange(x.shape[1])
+    np.random.shuffle(indices)
+
+    train_indices, val_indices = sorted(indices[:split]), sorted(indices[split:])
+    x_train, x_val = x[:, train_indices], x[:, val_indices]
+    y_train, y_val = y[:, train_indices], y[:, val_indices]
+
+    return x_train, x_val, y_train, y_val
+
+
+def train_test_split_class(x: np.array, y: np.array, split: float, split_valance = None, special_case = False):
     if split_valance is None:
         split_valance = [0.5, 0.5]
     if sum(split_valance) != 1:
         raise ValueError("The valance should sum to 1")
 
-    split = int((1 - split) * x.shape[1])
-    x_valance, y_valance = split_valance
-    x_train, x_val = x[:, :split], x[:, split:]
-    y_train, y_val = y[:, :split], y[:, split:]
+    split_a, split_b = int((1 - split * split_valance[0]) * x.shape[1]), int(
+        (1 - split * split_valance[1]) * x.shape[1])
+
+    indices_a, indices_b = np.arange(x.shape[1]), np.arange(x.shape[1])
+    np.random.shuffle(indices_a)
+    np.random.shuffle(indices_b)
+
+    train_indices_a, val_indices_a = sorted(indices_a[:split_a]), sorted(indices_a[split_a:])
+    train_indices_b, val_indices_b = sorted(indices_b[:split_b]), sorted(indices_b[split_b:])
+
+    x_train, x_val = np.stack([x[0, train_indices_a], x[1, train_indices_b]]), np.stack(
+        [x[0, val_indices_a], x[1, val_indices_a]])
+
+    # list(set(indices_a) - set(train_indices_a))
+    val_indices = np.concatenate((val_indices_a, val_indices_b))
+    y_train, y_val = y[:, val_indices], y[:, val_indices]
 
     return x_train, x_val, y_train, y_val
 
@@ -101,10 +131,10 @@ def generate_gauss_data(x_range: Dict, y_range: Dict) -> Dict:
     targets = np.reshape(z, (1, x.shape[1] ** 2))
     xx, yy = np.meshgrid(x, y)
     inputs = np.append(np.reshape(xx, (1, x.shape[1] ** 2)), np.reshape(yy, (1, y.shape[1] ** 2)), axis = 0)
-    return {"inputs": inputs, "targets": targets}
+    return {"inputs": inputs, "targets": targets, "xx": xx, "yy": yy, "z": z, "size": x.shape[1]}
 
 
-def plot_decision_boundary(x, y, model, steps=1000, cmap="Paired"):
+def plot_decision_boundary(x, y, model, steps = 1000, cmap = "Paired"):
     """
     Function to plot the decision boundary and data points of a model.
     Data points are colored based on their actual label.
@@ -120,16 +150,51 @@ def plot_decision_boundary(x, y, model, steps=1000, cmap="Paired"):
 
     # Make predictions across region of interest
     input_data = np.c_[xx.ravel(), yy.ravel()]
-    input_data = np.append(input_data, np.ones((input_data.shape[0], 1)), axis=1).T
+    input_data = np.append(input_data, np.ones((input_data.shape[0], 1)), axis = 1).T
     labels = model.pred(input_data)
 
     # Plot decision boundary in region of interest
     z = labels.reshape(xx.shape)
     fig, ax = plt.subplots()
-    ax.contourf(xx, yy, z, cmap=cmap, alpha=0.5)
+    ax.contourf(xx, yy, z, cmap = cmap, alpha = 0.5)
 
     # Plot data points.
-    plt.scatter(x[0], x[1], c=list(map(lambda x: "r" if x == 1 else "b", y[0])))
+    plt.scatter(x[0], x[1], c = list(map(lambda x: "r" if x == 1 else "b", y[0])))
     plt.title("Decision boundary for network.")
 
     plt.show()
+
+
+def plot_gaussian(input_data, predicted_z, title = "", gif = None):
+    Z = input_data['z']
+    norm = plt.Normalize(Z.min(), Z.max())
+    colors = cm.viridis(norm(Z))
+    colors[:, :, 3] = 0.5
+    rcount, ccount, _ = colors.shape
+
+    fig = plt.figure()
+    ax = fig.gca(projection = '3d')
+    surf = ax.plot_surface(input_data['xx'], input_data['yy'], Z, rcount = rcount, ccount = ccount,
+                           facecolors = colors, shade = False)
+    surf.set_facecolor((0, 0, 0, 0))
+    ax.plot_surface(input_data['xx'], input_data['yy'], predicted_z, color = "red", alpha = 0.5)
+    plt.title(title)
+    if gif is None:
+        plt.show()
+    else:
+        filename = f'images/{title}_{gif["epoch"]}_{gif["seq"]}.png'
+        plt.savefig(filename)
+        plt.close()
+
+
+def plot_gif(outputName, repeat_frames = 5):
+    # filenames = sorted(glob.glob('images/*.png'))
+    filenames = natsort.natsorted(glob.glob("images/*.png"))
+    step = int((1 / repeat_frames) if repeat_frames < 1 else 1)
+    filenames = [item for item in filenames for i in range(0, repeat_frames, step)]
+    with imageio.get_writer(f"images/{outputName}.gif", mode = "I") as writer:
+        for filename in filenames:
+            image = imageio.imread(filename)
+            writer.append_data(image)
+    for filename in set(filenames):
+        os.remove(filename)
