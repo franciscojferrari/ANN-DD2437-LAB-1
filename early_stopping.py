@@ -26,6 +26,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras import Input
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import SGD
+from sklearn.metrics import mean_squared_error
 
 from data_builder import InputsTargetsBuilder
 
@@ -115,14 +116,74 @@ def try_different_architectures(train_data, val_data, lambda_regul=None,
     f_out.close()
     return
 
+def predict_multiple_times(two_hidden_layers, train_data, val_data, test_data, 
+    num_runs=10, lambda_regul=None, num_epochs=300, batch_size=16, l_rate=0.05): 
+    
+    
+    if lambda_regul:    
+        callback = None
+    else:
+        callback = EarlyStopping(monitor="val_loss", min_delta=0.001, 
+                                                       patience=30, mode="min")
+    
+    num_test = test_data[0].shape[0]
+    predictions = np.zeros(shape=(num_runs, num_test))
+    last_train_mses = np.zeros(num_runs)
+    last_val_mses = np.zeros(num_runs)
+    for i in range(num_runs):
+        model = build_architecture(two_hidden_layers)
+        model.compile(loss="mean_squared_error", optimizer=SGD(lr=l_rate))
+        history = model.fit(x=train_data[0], y=train_data[1], batch_size=batch_size, 
+           epochs=num_epochs, validation_data=val_data, callbacks=[callback], 
+                                                                     verbose=False)
+        last_train_mses[i] = history.history["loss"][-1]
+        last_val_mses[i] = history.history["val_loss"][-1]
+        predictions[i, :] = model.predict(test_data[0])[:, 0]
+    return last_train_mses, last_val_mses, predictions
+
+
+
+
+
+
 
 train_data, val_data, test_data = get_train_val_test()
-first_layer_tries = [6]
-second_layer_tries = [8]
-try_different_architectures(train_data, 
-                            val_data, 
-                            first_layer_tries=first_layer_tries, 
-                            second_layer_tries=second_layer_tries)
+print("num_train + num_val = ", train_data[1].size + val_data[1].size)
+
+worse_architecture = (3, 2)
+last_train_mses, last_val_mses, predictions = predict_multiple_times(
+    worse_architecture, train_data, val_data, test_data, num_runs=10) 
+
+print(last_train_mses)
+print(last_val_mses)
+
+good_preds = predictions[last_val_mses < 0.2]
+num_good_preds = good_preds.shape[0]
+
+average_pred = np.sum(good_preds, axis=0) / good_preds.shape[0]
+pred_std = np.std(good_preds, axis=0)
+
+num_points = average_pred.shape[0]
+time=np.arange(1325, 1325+num_points)
+plt.figure()
+plt.title("Worse architecture: %d runs average" % good_preds.shape[0])
+plt.xlabel("time")
+plt.ylabel("mackey glass")
+plt.plot(time, test_data[1], label="test signal")
+plt.plot(time, average_pred, color="red", label="averaged prediction")
+plt.fill_between(x=time, y1=average_pred-pred_std, 
+                 y2=average_pred+pred_std, label="pred_std", color="darkorange")
+plt.legend()
+
+
+print("test_mse", mean_squared_error(test_data[1], average_pred))
+
+#first_layer_tries = [3, 4, 5]
+#second_layer_tries = [2, 4, 6]
+#try_different_architectures(train_data, 
+#                            val_data, 
+#                            first_layer_tries=first_layer_tries, 
+#                            second_layer_tries=second_layer_tries)
 
 
 
