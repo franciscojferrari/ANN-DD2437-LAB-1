@@ -72,22 +72,24 @@ def train_test_split_class(x: np.array, y: np.array, split: float, split_valance
     if sum(split_valance) != 1:
         raise ValueError("The valance should sum to 1")
 
-    split_a, split_b = int((1 - split * split_valance[0]) * x.shape[1]), int(
-        (1 - split * split_valance[1]) * x.shape[1])
+    a_value, b_value = np.unique(y)
 
-    indices_a, indices_b = np.arange(x.shape[1]), np.arange(x.shape[1])
-    np.random.shuffle(indices_a)
-    np.random.shuffle(indices_b)
+    indices_a = np.argwhere(y.flatten() == a_value).T.flatten()
+    indices_b = np.argwhere(y.flatten() == b_value).T.flatten()
+    # np.random.shuffle(indices_a)
+    # np.random.shuffle(indices_b)
 
-    train_indices_a, val_indices_a = sorted(indices_a[:split_a]), sorted(indices_a[split_a:])
-    train_indices_b, val_indices_b = sorted(indices_b[:split_b]), sorted(indices_b[split_b:])
+    split_a, split_b = int((1 - split * split_valance[0] * 2) * indices_a.shape[0]), int(
+        (1 - split * split_valance[1] * 2) * indices_b.shape[0])
 
-    x_train, x_val = np.stack([x[0, train_indices_a], x[1, train_indices_b]]), np.stack(
-        [x[0, val_indices_a], x[1, val_indices_a]])
+    train_indices_a, val_indices_a = indices_a[:split_a], indices_a[split_a:]
+    train_indices_b, val_indices_b = indices_b[:split_b], indices_b[split_b:]
 
-    # list(set(indices_a) - set(train_indices_a))
-    val_indices = np.concatenate((val_indices_a, val_indices_b))
-    y_train, y_val = y[:, val_indices], y[:, val_indices]
+    x_train, x_val = np.concatenate((x[:, train_indices_a], x[:, train_indices_b]), axis = 1), np.concatenate(
+        (x[:, val_indices_a], x[:, val_indices_a]), axis = 1)
+
+    y_train, y_val = np.concatenate((y[:, train_indices_a], y[:, train_indices_b]), axis = 1), np.concatenate(
+        (y[:, val_indices_a], y[:, val_indices_a]), axis = 1)
 
     return x_train, x_val, y_train, y_val
 
@@ -189,12 +191,14 @@ def plot_gaussian(input_data, predicted_z, title = "", gif = None):
 
 def plot_gif(outputName, repeat_frames = 5):
     # filenames = sorted(glob.glob('images/*.png'))
-    filenames = natsort.natsorted(glob.glob("images/*.png"))
+    all_filenames = natsort.natsorted(glob.glob("images/*.png"))
     step = int((1 / repeat_frames) if repeat_frames < 1 else 1)
-    filenames = [item for item in filenames for i in range(0, repeat_frames, step)]
+    repeat_frames = int(repeat_frames if repeat_frames >= 1 else 1)
+    filenames = [item for item in all_filenames for i in range(0, repeat_frames)][::step]
+
     with imageio.get_writer(f"images/{outputName}.gif", mode = "I") as writer:
         for filename in filenames:
             image = imageio.imread(filename)
             writer.append_data(image)
-    for filename in set(filenames):
+    for filename in set(all_filenames):
         os.remove(filename)

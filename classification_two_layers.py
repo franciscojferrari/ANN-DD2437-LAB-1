@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import generate_linear_data, generate_nonlinear_data, train_test_split, plot_losses, plot_decision_boundary
+from utils import generate_linear_data, generate_nonlinear_data, train_test_split, plot_losses, plot_decision_boundary, \
+    train_test_split_class
 from sklearn.metrics import mean_squared_error, accuracy_score
 
 
 class NueralNet:
-    def __init__(self, x, y, hidden_layer_size, output_layer_size, is_binary = True):
+    def __init__(self, x, y, hidden_layer_size, output_layer_size, lr = 0.001, is_binary = True):
         self.X = np.append(x.T, np.ones((x.shape[1], 1)), axis = 1).T
         self.Y = np.atleast_2d(y)
         self.Yp = np.zeros((1, self.Y.shape[1]))
@@ -17,7 +18,7 @@ class NueralNet:
         self.ch = {}
 
         self.loss = []
-        self.lr = 0.001
+        self.lr = lr
         self.momentum = 0.9
         self.samples = self.Y.shape[1]
 
@@ -49,7 +50,6 @@ class NueralNet:
         return x
 
     def initWeights(self):
-        np.random.seed(42)
         # W shape (V size, N features) or (hidden layer size, X shape)
         self.W = np.random.randn(self.dims[1], self.dims[0])
         # V shape (target shape, hidden layer dimension)
@@ -102,8 +102,7 @@ class NueralNet:
         Ybatches = np.array_split(self.Y, self.samples // self.batch_size, axis = 1)
 
         for epoch in range(epochs):
-            if epoch == epochs - 1:
-                print("Here")
+
             for Xbatch, Ybatch in list(zip(Xbatches, Ybatches)):
                 forward = self.fowardPass(Xbatch, Ybatch)
                 self.backwardsPass(Xbatch, Ybatch)
@@ -181,7 +180,8 @@ def exe_3_2_1():
     # Generate data.
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data['inputs'], data['targets']
-    x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split = 0.1)
+
+    x_train, x_val, y_train, y_val = train_test_split_class(inputs, targets, split = 0.2, split_valance = [0.5, 0.5])
 
     # Create and train network with different number of hidden layers.
     for hidden_layer_shape in range(1, 30):
@@ -212,7 +212,9 @@ def exe_3_2_1():
         # data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
         data = generate_nonlinear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
         inputs, targets = data['inputs'], data['targets']
-        x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split = split)
+        # x_train, x_val, y_train, y_val = train_test_split(inputs, targets, split = split)
+        x_train, x_val, y_train, y_val = train_test_split_class(inputs, targets, split = split,
+                                                                split_valance = [0.5, 0.5])
 
         model = NueralNet(x_train, y_train, hidden_layer_size = hidden_layer_shape,
                           output_layer_size = output_layer_size)
