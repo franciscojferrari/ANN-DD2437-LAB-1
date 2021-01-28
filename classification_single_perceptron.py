@@ -5,7 +5,7 @@ from utils import generate_linear_data, generate_nonlinear_data, plot_gif
 from sklearn.metrics import mean_squared_error, accuracy_score
 
 
-def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6):
+def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6, plot_gifs = False):
     inputs = np.append(inputs.T, np.ones((inputs.shape[1], 1)), axis = 1).T
     W = np.random.randn(1, inputs.shape[0])
 
@@ -20,9 +20,11 @@ def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6):
         W = W + learning_rate * (error @ inputs.T)
         errors.append(mean_squared_error(targets.flatten(), prediction.flatten()))
         accuracies.append(accuracy_score(targets.flatten(), prediction.flatten()))
-        plot_hyperplane(inputs, W, targets, f"perceptron_learning_batch - {epoch}", gif = {"epoch": epoch, "seq": 0})
-
-    plot_gif("perceptron_learning_batch", repeat_frames = 0.5)
+        if plot_gifs:
+            plot_hyperplane(inputs, W, targets, f"perceptron_learning_batch - {epoch}",
+                            gif = {"epoch": epoch, "seq": 0})
+    if plot_gifs:
+        plot_gif("perceptron_learning_batch", repeat_frames = 0.5)
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
@@ -39,28 +41,33 @@ def perceptron_learning_sequential(X, T, learning_rate = 0.001, epochs = 5):
             y_i = 1 if y_i >= 0 else 0
             error = T[0][i] - y_i
             W = W + learning_rate * (error * x.T)
-            plot_hyperplane(X, W, T, f"perceptron_learning_sequential - {epoch}",
-                            gif = {"epoch": epoch, "seq": i})
+
         prediction = W @ X
         prediction[prediction >= 0] = 1
         prediction[prediction < 0] = -1
 
+        plot_hyperplane(X, W, T, f"perceptron_learning_sequential - {epoch}",
+                        gif = {"epoch": epoch, "seq": 0})
+
         errors.append(mean_squared_error(T.flatten(), prediction.flatten()))
         accuracies.append(accuracy_score(T.flatten(), prediction.flatten()))
 
-    plot_gif("perceptron_learning_sequential", repeat_frames = 0.1)
+    plot_gif("perceptron_learning_sequential", repeat_frames = 0.5)
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
 def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5):
+    X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+
     W = np.random.normal(0, 1, X.shape[0])
     plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0})
     squared_error = []
     for epoch in range(epochs):
         prediction = W @ X
-        error = prediction - T
+        error = T - prediction
         squared_error.append((error @ error.T) / 2)
-        W = W - learning_rate * (error) @ X.T
+        W = W + learning_rate * (error @ X.T)
+
         plot_hyperplane(X, W, T,
                         f"delta_learning_batch - epoch:{epoch}",
                         gif = {"epoch": epoch, "seq": 0},
@@ -145,11 +152,11 @@ def exe_3_1_2():
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
 
-    # perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+    perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
     # plot_errors(perceptron_learning_batch_results, "perceptron_learning_batch")
-    # delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 30)
-    perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 30)
-    plot_errors(perceptron_learning_sequential_results, "perceptron_learning_batch")
+    delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 30)
+    perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 200)
+    # plot_errors(perceptron_learning_sequential_results, "perceptron_learning_batch")
     # delta_learning_sequential(inputs, targets, learning_rate = 0.001, epochs = 10)
 
 
