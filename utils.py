@@ -191,12 +191,14 @@ def plot_gaussian(input_data, predicted_z, title = "", gif = None):
 
 def plot_gif(outputName, repeat_frames = 5):
     # filenames = sorted(glob.glob('images/*.png'))
-    filenames = natsort.natsorted(glob.glob("images/*.png"))
+    all_filenames = natsort.natsorted(glob.glob("images/*.png"))
     step = int((1 / repeat_frames) if repeat_frames < 1 else 1)
-    filenames = [item for item in filenames for i in range(0, repeat_frames, step)]
+    repeat_frames = int(repeat_frames if repeat_frames >= 1 else 1)
+    filenames = [item for item in all_filenames for i in range(0, repeat_frames)][::step]
+
     with imageio.get_writer(f"images/{outputName}.gif", mode = "I") as writer:
         for filename in filenames:
             image = imageio.imread(filename)
             writer.append_data(image)
-    for filename in set(filenames):
+    for filename in set(all_filenames):
         os.remove(filename)

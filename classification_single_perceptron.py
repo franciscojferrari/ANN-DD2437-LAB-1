@@ -1,97 +1,55 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import imageio
-import random
-import glob
-import os
-import natsort
 
-
-def generate_linear_data(
-        N: int, mA: list, mB: list, sigmaA: float, sigmaB: float, target_values = [-1, 1]
-):
-    covA = np.zeros((2, 2))
-    np.fill_diagonal(covA, sigmaA)
-    covB = np.zeros((2, 2))
-    np.fill_diagonal(covB, sigmaB)
-
-    classA = np.random.multivariate_normal(mA, covA, N)
-    classB = np.random.multivariate_normal(mB, covB, N)
-    inputs = np.concatenate((classA, classB))
-    targets = np.concatenate(
-        (
-            target_values[0] * np.ones(classA.shape[0]),
-            target_values[1] * np.ones(classB.shape[0]),
-        )
-    )
-
-    inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
-
-    indices = np.arange(inputs.shape[0])
-    np.random.shuffle(indices)
-    inputs = inputs[indices]
-    targets = targets[indices]
-
-    return {"inputs": inputs.T, "targets": targets}
-
-
-def generate_nonlinear_data(
-        N: int, mA: list, mB: list, sigmaA: float, sigmaB: float, target_values = [-1, 1]
-):
-    covA = np.zeros((2, 2))
-    np.fill_diagonal(covA, sigmaA)
-    covB = np.zeros((2, 2))
-    np.fill_diagonal(covB, sigmaB)
-
-    classA_1 = np.random.multivariate_normal(mA, covA, N // 2)
-    mA_2 = np.array(mA) * [-1, 1]
-    classA_2 = np.random.multivariate_normal(mA_2, covA, N // 2)
-    classA = np.concatenate((classA_1, classA_2))
-
-    classB = np.random.multivariate_normal(mB, covB, N)
-    inputs = np.concatenate((classA, classB))
-    targets = np.concatenate(
-        (
-            target_values[0] * np.ones(classA.shape[0]),
-            target_values[1] * np.ones(classB.shape[0]),
-        )
-    )
-
-    inputs = np.append(inputs, np.ones((inputs.shape[0], 1)), axis = 1)
-
-    indices = np.arange(inputs.shape[0])
-    np.random.shuffle(indices)
-    inputs = inputs[indices]
-    targets = targets[indices]
-    return {"inputs": inputs.T, "targets": targets}
+from utils import generate_linear_data, generate_nonlinear_data, plot_gif
+from sklearn.metrics import mean_squared_error, accuracy_score
 
 
 def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6):
-    W = np.random.normal(0, 1, inputs.shape[0])
-    plot_hyperplane(inputs, W, targets, "perceptron_learning_batch")
+    inputs = np.append(inputs.T, np.ones((inputs.shape[1], 1)), axis = 1).T
+    W = np.random.randn(1, inputs.shape[0])
+
+    plot_hyperplane(inputs, W, targets, f"0perceptron_learning_batch", gif = {"epoch": "00", "seq": 0})
+    errors, accuracies = [], []
     for epoch in range(epochs):
         prediction = W @ inputs
         prediction[prediction >= 0] = 1
         prediction[prediction < 0] = -1
         error = targets - prediction
-        W = W + inputs @ (learning_rate * error)
-        plot_hyperplane(inputs, W, targets, "perceptron_learning_batch")
-        print(W)
 
-    return prediction
+        W = W + learning_rate * (error @ inputs.T)
+        errors.append(mean_squared_error(targets.flatten(), prediction.flatten()))
+        accuracies.append(accuracy_score(targets.flatten(), prediction.flatten()))
+        plot_hyperplane(inputs, W, targets, f"perceptron_learning_batch - {epoch}", gif = {"epoch": epoch, "seq": 0})
+
+    plot_gif("perceptron_learning_batch", repeat_frames = 0.5)
+    return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
 def perceptron_learning_sequential(X, T, learning_rate = 0.001, epochs = 5):
-    W = np.random.normal(0, 1, X.shape[0])
+    X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+    W = np.random.randn(1, X.shape[0])
+
+    plot_hyperplane(X, W, T, f"0perceptron_learning_sequential", gif = {"epoch": "00", "seq": 0})
+    errors, accuracies = [], []
     for epoch in range(epochs):
         sum_error = 0
         for i, x in enumerate(X.T):
             y_i = W @ x
             y_i = 1 if y_i >= 0 else 0
-            error = y_i - T[i]
-            sum_error += error ** 2
-            W = W - learning_rate * (error * x.T)
-            print(W)
+            error = T[0][i] - y_i
+            W = W + learning_rate * (error * x.T)
+            plot_hyperplane(X, W, T, f"perceptron_learning_sequential - {epoch}",
+                            gif = {"epoch": epoch, "seq": i})
+        prediction = W @ X
+        prediction[prediction >= 0] = 1
+        prediction[prediction < 0] = -1
+
+        errors.append(mean_squared_error(T.flatten(), prediction.flatten()))
+        accuracies.append(accuracy_score(T.flatten(), prediction.flatten()))
+
+    plot_gif("perceptron_learning_sequential", repeat_frames = 0.1)
+    return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
 def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5):
@@ -138,28 +96,16 @@ def delta_learning_sequential(X, T, learning_rate = 0.001, epochs = 5):
     print(squared_error)
 
 
-def plot_gif(outputName, repeat_frames = 5):
-    # filenames = sorted(glob.glob('images/*.png'))
-    filenames = natsort.natsorted(glob.glob("images/*.png"))
-    filenames = [item for item in filenames for i in range(repeat_frames)]
-    with imageio.get_writer(f"images/{outputName}.gif", mode = "I") as writer:
-        for filename in filenames:
-            image = imageio.imread(filename)
-            writer.append_data(image)
-    for filename in set(filenames):
-        os.remove(filename)
-
-
 def plot_hyperplane(data, weights, targets, title, gif = None):
     plt.scatter(
-        data[0], data[1], c = list(map(lambda x: "r" if x == 1 else "b", targets))
+        data[0], data[1], c = list(map(lambda x: "r" if x == 1 else "b", targets[0]))
     )
     plt.title(title)
     xmin, xmax = plt.xlim()
     ymin, ymax = plt.ylim()
     xx = np.linspace(-2, 2)
-    a = -weights[0] / weights[1]
-    bias = -weights[2] / weights[1]
+    a = -weights[0][0] / weights[0][1]
+    bias = -weights[0][2] / weights[0][1]
     yy = a * xx + bias
     plt.plot(xx, yy, "k-")
     plt.ylim([ymin * 1.2, ymax * 1.2])
@@ -173,20 +119,38 @@ def plot_hyperplane(data, weights, targets, title, gif = None):
         plt.show()
 
 
+def plot_errors(losses, title):
+    plt.plot(losses["epoch_errors"], label = "MSE")
+    plt.xlabel("Epochs")
+    plt.ylabel("Mean Squared Error loss")
+    plt.legend()
+    plt.title(title)
+    plt.show()
+
+    plt.plot(losses["epoch_accuracies"], label = "Accuracy")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.title(title)
+    plt.show()
+
+
 def exe_3_1_2():
-    np.random.seed(42)
+    np.random.seed(999)
     n = 100
-    mA = [2.0, 0.5]
+    mA = [1.0, 0.5]
     sigmaA = 0.5
-    mB = [-2.0, -1.5]
+    mB = [-1.0, 0]
     sigmaB = 0.5
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
 
-    # perceptron_learning_batch(inputs, targets)
+    # perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+    # plot_errors(perceptron_learning_batch_results, "perceptron_learning_batch")
     # delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 30)
-    # perceptron_learning_sequential(inputs, targets)
-    delta_learning_sequential(inputs, targets, learning_rate = 0.001, epochs = 10)
+    perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 30)
+    plot_errors(perceptron_learning_sequential_results, "perceptron_learning_batch")
+    # delta_learning_sequential(inputs, targets, learning_rate = 0.001, epochs = 10)
 
 
 def exe_3_1_3():
@@ -206,10 +170,8 @@ def exe_3_1_3():
 
 
 def main():
-    exe_3_1_3()
-
-
-# exe_3_1_2()
+    # exe_3_1_3()
+    exe_3_1_2()
 
 
 if __name__ == "__main__":
