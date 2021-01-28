@@ -69,7 +69,8 @@ def step_function_pred(X):
 
 def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5, plot_gifs = False):
     X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
-    W = np.random.normal(0, 1, X.shape[0])
+    W = np.random.randn(1, X.shape[0])
+
     if plot_gifs:
         plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0})
     squared_error = []
@@ -168,10 +169,12 @@ def exe_3_1_2():
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
 
-    # perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
-    # plot_errors(perceptron_learning_batch_results, "perceptron_learning_batch")
+    perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+    plot_errors(perceptron_learning_batch_results, "perceptron_learning_batch")
 
-    delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+    delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200,
+                                                        plot_gifs = True)
+    plot_errors(delta_learning_batch_results, "delta_learning_batch")
 
     # perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 200)
     # plot_errors(perceptron_learning_sequential_results, "perceptron_learning_batch")
