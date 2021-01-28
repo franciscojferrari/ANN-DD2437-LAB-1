@@ -9,7 +9,9 @@ def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6, 
     inputs = np.append(inputs.T, np.ones((inputs.shape[1], 1)), axis = 1).T
     W = np.random.randn(1, inputs.shape[0])
 
-    plot_hyperplane(inputs, W, targets, f"0perceptron_learning_batch", gif = {"epoch": "00", "seq": 0})
+    if plot_gifs:
+        plot_hyperplane(inputs, W, targets, f"0perceptron_learning_batch", gif = {"epoch": "00", "seq": 0})
+
     errors, accuracies = [], []
     for epoch in range(epochs):
         prediction = W @ inputs
@@ -25,6 +27,7 @@ def perceptron_learning_batch(inputs, targets, learning_rate = 0.1, epochs = 6, 
                             gif = {"epoch": epoch, "seq": 0})
     if plot_gifs:
         plot_gif("perceptron_learning_batch", repeat_frames = 0.5)
+
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
@@ -56,24 +59,37 @@ def perceptron_learning_sequential(X, T, learning_rate = 0.001, epochs = 5):
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
-def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5):
-    X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+def step_function_pred(X):
+    """Added for plotting purposes."""
+    x = np.copy(X)
+    x[x >= 0] = 1
+    x[x < 0] = 0
+    return x
 
+
+def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5, plot_gifs = False):
+    X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
     W = np.random.normal(0, 1, X.shape[0])
-    plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0})
+    if plot_gifs:
+        plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0})
     squared_error = []
+    errors, accuracies = [], []
+
     for epoch in range(epochs):
         prediction = W @ X
         error = T - prediction
-        squared_error.append((error @ error.T) / 2)
         W = W + learning_rate * (error @ X.T)
+        results = step_function_pred(prediction.flatten())
+        errors.append(mean_squared_error(T.flatten(), results))
+        accuracies.append(accuracy_score(T.flatten(), results))
 
-        plot_hyperplane(X, W, T,
-                        f"delta_learning_batch - epoch:{epoch}",
-                        gif = {"epoch": epoch, "seq": 0},
-                        )
-    print(squared_error)
-    plot_gif("delta_learning_batch", repeat_frames = 1)
+        if plot_gifs:
+            plot_hyperplane(X, W, T, f"delta_learning_batch - epoch:{epoch}", gif = {"epoch": epoch, "seq": 0}, )
+
+    if plot_gifs:
+        plot_gif("delta_learning_batch", repeat_frames = 1)
+
+    return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
 def delta_learning_sequential(X, T, learning_rate = 0.001, epochs = 5):
@@ -152,10 +168,12 @@ def exe_3_1_2():
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
 
-    perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+    # perceptron_learning_batch_results = perceptron_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
     # plot_errors(perceptron_learning_batch_results, "perceptron_learning_batch")
-    delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 30)
-    perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 200)
+
+    delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 200)
+
+    # perceptron_learning_sequential_results = perceptron_learning_sequential(inputs, targets, epochs = 200)
     # plot_errors(perceptron_learning_sequential_results, "perceptron_learning_batch")
     # delta_learning_sequential(inputs, targets, learning_rate = 0.001, epochs = 10)
 
