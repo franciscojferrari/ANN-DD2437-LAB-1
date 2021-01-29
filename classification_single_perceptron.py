@@ -67,12 +67,14 @@ def perceptron_learning_sequential(X, T, learning_rate = 0.001, epochs = 5, plot
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
-def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5, plot_gifs = False, frame_rate = 1):
-    X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5, plot_gifs = False, frame_rate = 1, bias = True):
+    if bias:
+        X = np.append(X.T, np.ones((X.shape[1], 1)), axis = 1).T
+
     W = np.random.randn(1, X.shape[0])
 
     if plot_gifs:
-        plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0})
+        plot_hyperplane(X, W, T, f"0delta_learning_batch", gif = {"epoch": "00", "seq": 0}, isBias = bias)
     errors, accuracies = [], []
 
     for epoch in range(epochs):
@@ -84,7 +86,8 @@ def delta_learning_batch(X, T, learning_rate = 0.001, epochs = 5, plot_gifs = Fa
         accuracies.append(accuracy_score(T.flatten(), results))
 
         if plot_gifs:
-            plot_hyperplane(X, W, T, f"delta_learning_batch - epoch:{epoch}", gif = {"epoch": epoch, "seq": 0}, )
+            plot_hyperplane(X, W, T, f"delta_learning_batch - epoch:{epoch}", gif = {"epoch": epoch, "seq": 0},
+                            isBias = bias)
 
     if plot_gifs:
         plot_gif("delta_learning_batch", repeat_frames = frame_rate)
@@ -119,7 +122,7 @@ def delta_learning_sequential(X, T, learning_rate = 0.001, epochs = 5, plot_gifs
     return {"epoch_errors": errors, "epoch_accuracies": accuracies}
 
 
-def plot_hyperplane(data, weights, targets, title, gif = None):
+def plot_hyperplane(data, weights, targets, title, gif = None, isBias = True):
     plt.scatter(
         data[0], data[1], c = list(map(lambda x: "r" if x == 1 else "b", targets[0]))
     )
@@ -128,7 +131,7 @@ def plot_hyperplane(data, weights, targets, title, gif = None):
     ymin, ymax = plt.ylim()
     xx = np.linspace(-2, 2)
     a = -weights[0][0] / weights[0][1]
-    bias = -weights[0][2] / weights[0][1]
+    bias = -weights[0][2] / weights[0][1] if isBias else 0
     yy = a * xx + bias
     plt.plot(xx, yy, "k-")
     plt.ylim([ymin * 1.2, ymax * 1.2])
@@ -162,71 +165,71 @@ def exe_3_1_2():
     seed = np.random.randint(1000)
     np.random.seed(seed)
     n = 100
-    mA = [2.0, 0.5]
-    sigmaA = 0.5
-    mB = [-2.0, -1.5]
+    mA = [4, 0.5]
+    sigmaA = 0.4
+    mB = [0.0, 0.5]
     sigmaB = 0.5
     data = generate_linear_data(n, mA, mB, sigmaA, sigmaB, target_values = [1, -1])
     inputs, targets = data["inputs"], data["targets"]
 
     # GIFs
     # perceptron_learning_batch(inputs, targets, epochs = 50, plot_gifs = True)
-    # delta_learning_batch(inputs, targets, epochs = 50, plot_gifs = True)
-    # return
+    # delta_learning_sequential(inputs, targets, epochs = 50, plot_gifs = True)
+    # delta_learning_batch(inputs, targets, epochs = 50, plot_gifs = True, bias = True)
 
-    lrs = [0.0001, 0.001, 0.01, 0.05, 0.1]
-    for lr in lrs:
-        perceptron_learning_batch_result = perceptron_learning_batch(inputs, targets, learning_rate = lr, epochs = 50)
-        plt.plot(perceptron_learning_batch_result["epoch_errors"], label = f"lr: {lr}")
-        plt.xlabel("Epochs")
-        plt.ylabel("Mean Squared Error loss")
-        plt.legend()
-        plt.title("Perceptron Learning Batch MSE")
-    # plt.show()
-    filename = f'images/lr_perceptron_learning_batch_{round(time.time() * 100)}.png'
-    plt.savefig(filename)
-    plt.close()
+    # lrs = [0.0001, 0.001, 0.01, 0.05, 0.1]
+    # for lr in lrs:
+    #     perceptron_learning_batch_result = perceptron_learning_batch(inputs, targets, learning_rate = lr, epochs = 50)
+    #     plt.plot(perceptron_learning_batch_result["epoch_errors"], label = f"lr: {lr}")
+    #     plt.xlabel("Epochs")
+    #     plt.ylabel("Mean Squared Error loss")
+    #     plt.legend()
+    #     plt.title("Perceptron Learning Batch MSE")
+    # # plt.show()
+    # filename = f'images/lr_perceptron_learning_batch_{round(time.time() * 100)}.png'
+    # plt.savefig(filename)
+    # plt.close()
 
-    lrs = [0.00005, 0.0001, 0.0005, 0.001]
-    for lr in lrs:
-        delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = lr, epochs = 50,
-                                                            plot_gifs = False)
-        # print(delta_learning_batch_results["epoch_errors"])
-        plt.plot(delta_learning_batch_results["epoch_errors"], label = f"lr: {lr}")
-        plt.xlabel("Epochs")
-        plt.ylabel("Mean Squared Error loss")
-        plt.legend()
-        plt.title("Delta Learning Batch MSE")
-    # plt.show()
+    # lrs = [0.00005, 0.0001, 0.0005, 0.001]
+    # for lr in lrs:
+    #     delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = lr, epochs = 50,
+    #                                                         plot_gifs = False)
+    #     # print(delta_learning_batch_results["epoch_errors"])
+    #     plt.plot(delta_learning_batch_results["epoch_errors"], label = f"lr: {lr}")
+    #     plt.xlabel("Epochs")
+    #     plt.ylabel("Mean Squared Error loss")
+    #     plt.legend()
+    #     plt.title("Delta Learning Batch MSE")
+    # # plt.show()
 
-    filename = f'images/lr_delta_learning_batch_{round(time.time() * 100)}.png'
-    plt.savefig(filename)
-    plt.close()
+    # filename = f'images/lr_delta_learning_batch_{round(time.time() * 100)}.png'
+    # plt.savefig(filename)
+    # plt.close()
+    #
+    # lrs = [0.00005, 0.0001, 0.0005, 0.001]
+    # for lr in lrs:
+    #     delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = lr, epochs = 50)
+    #     plt.plot(delta_learning_batch_results["epoch_errors"], label = f"lr: {lr}")
+    #     plt.xlabel("Epochs")
+    #     plt.ylabel("Mean Squared Error loss")
+    #     plt.legend()
+    #     plt.title("Delta Learning Batch MSE")
+    # # plt.show()
+    # filename = f'images/2lr_delta_learning_batch_{round(time.time() * 100)}.png'
+    # plt.savefig(filename)
+    # plt.close()
 
-    lrs = [0.00005, 0.0001, 0.0005, 0.001]
-    for lr in lrs:
-        delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = lr, epochs = 50)
-        plt.plot(delta_learning_batch_results["epoch_errors"], label = f"lr: {lr}")
-        plt.xlabel("Epochs")
-        plt.ylabel("Mean Squared Error loss")
-        plt.legend()
-        plt.title("Delta Learning Batch MSE")
-    # plt.show()
-    filename = f'images/2lr_delta_learning_batch_{round(time.time() * 100)}.png'
-    plt.savefig(filename)
-    plt.close()
-
-    for lr in lrs:
-        delta_learning_sequential_results = delta_learning_sequential(inputs, targets, learning_rate = lr, epochs = 50)
-        plt.plot(delta_learning_sequential_results["epoch_errors"], label = f"lr: {lr}")
-        plt.xlabel("Epochs")
-        plt.ylabel("Mean Squared Error loss")
-        plt.legend()
-        plt.title("Delta Learning Sequential MSE")
-    # plt.show()
-    filename = f'images/2lr_delta_learning_sequential_results_{round(time.time() * 100)}.png'
-    plt.savefig(filename)
-    plt.close()
+    # for lr in lrs:
+    #     delta_learning_sequential_results = delta_learning_sequential(inputs, targets, learning_rate = lr, epochs = 50)
+    #     plt.plot(delta_learning_sequential_results["epoch_errors"], label = f"lr: {lr}")
+    #     plt.xlabel("Epochs")
+    #     plt.ylabel("Mean Squared Error loss")
+    #     plt.legend()
+    #     plt.title("Delta Learning Sequential MSE")
+    # # plt.show()
+    # filename = f'images/2lr_delta_learning_sequential_results_{round(time.time() * 100)}.png'
+    # plt.savefig(filename)
+    # plt.close()
 
     # delta_learning_batch_results = delta_learning_batch(inputs, targets, learning_rate = 0.001, epochs = 30)
     # plot_errors(delta_learning_batch_results, "delta_learning_batch")
