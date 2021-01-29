@@ -10,7 +10,6 @@ of each architecture in a file.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras import Input
@@ -87,49 +86,47 @@ class EarlyStoppingPredictor(object):
 
 class GridSearch(object):
     def __init__(self, layer1_nodes, layer2_nodes):
-        self.layer1_nodes, layer2_nodes
+        self.layer1_nodes = layer1_nodes 
+        self.layer2_nodes = layer2_nodes
     
-
-
-
-
-def try_different_architectures(self, ):
-    predsfile = "%d_%d_preds.txt" % (self.architecture[0], self.architecture[1])
-    loss_file = "%d_%d_loss.txt" % (self.architecture[0], self.architecture[1])
-        
+    def try_different_architectures(self, num_runs):
+        for h1 in self.layer1_nodes:
+            for h2 in self.layer2_nodes:
+                predsfile = "%d_%d_preds" % (h1, h2)
+                loss_file = "%d_%d_loss.txt" % (h1, h2)
+                val_loss = "%d_%d_val_loss.txt" % (h1, h2)
+                predictor = EarlyStoppingPredictor((h1, h2))
+                train_mses, val_mses, preds = predictor.get_suceessful_predictions(num_runs)
+                np.save(predsfile, preds)
+                np.savetxt(loss_file, train_mses)
+                np.savetxt(val_loss, val_mses)
+        return
     
-    
-        
-    
-
-
-
-
-
 
 # Set of global variables
 # for early stopping
 min_delta = 0.0001
 
 patience = 30
-val_threshold = 0.05
+val_threshold = 0.1
 #data
 (x_train, y_train), (x_val, y_val), (x_test, y_test) = get_train_val_test()
+np.save("test", y_test)
 test_length = y_test.shape[0]
 #hiperparams
 l_rate = 0.05
 batch_size = 16
-num_epochs = 1000
+num_epochs = 30
 # printing options
 verbose = True
 
-num_preds = 1
-archi = (3, 6)
-predictor = EarlyStoppingPredictor(archi)
-preds = predictor.get_suceessful_predictions(num_preds=num_preds)[2]
-plt.figure()
-plt.plot(y_test)
-plt.plot(np.sum(preds, axis=0) / num_preds)
+num_preds = 2
+h1 = [3]
+h2 = [6]
+grid = GridSearch(h1, h2)
+grid.try_different_architectures(num_preds)
+
+
 
 
 
